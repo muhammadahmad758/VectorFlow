@@ -564,3 +564,10 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details. 
+## My Changes in This Fork
+
+Fork maintained by [Muhammad Ahmad](https://github.com/muhammadahmad758) for learning purposes. Original project by Reet Nandy ([TechPertz](https://github.com/TechPertz/VectorFlow)), MIT License preserved.
+
+**Bug fix — `LinearIndex` crashed when adding to an empty index:** an index created with an empty chunk list never built its normalized-embedding cache, and `add_chunk()` silently skipped the append when the cache was `None`, so the first `query()` after adding crashed with `TypeError: 'NoneType' object is not subscriptable`. This is the normal real-world flow (create an empty library, add documents later). The fix in `VectorFlow/app/services/indexes/linear.py` initialises the cache on the first add when the index started empty (+4/−1 lines).
+
+**Tests:** two regression tests added to `VectorFlow/tests/api/endpoints/test_indexes.py` covering add-to-empty with normalization on and off. Index test file: 8/8 passing before → 10/10 after the fix. (One unrelated pre-existing failure exists elsewhere in the suite: a text-search validation test expects HTTP 400 where current FastAPI/pydantic v2 returns 422; it fails identically on the unmodified upstream code.)
