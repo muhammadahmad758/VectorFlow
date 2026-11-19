@@ -103,6 +103,46 @@ class TestIndexes:
             results = index.query(query, 5)
             assert len(results) == 0, f"{index_class.__name__} should return empty results for empty index"
 
+    def test_linear_index_add_chunk_to_empty_index(self, random_query):
+        """Adding chunks to an index created empty must not break later queries.
+
+        Regression test: LinearIndex([]) left normalized_embeddings as None
+        and add_chunk() silently skipped filling it, so the first query
+        crashed with TypeError: 'NoneType' object is not subscriptable.
+        """
+        index = LinearIndex([])
+
+        assert index.add_chunk(Chunk(
+            id=uuid4(), text="east", embedding=[1.0, 0.0, 0.0, 0.0],
+            metadata=ChunkMetadata(name="east", created_at=datetime.now())
+        )) is True
+        assert index.add_chunk(Chunk(
+            id=uuid4(), text="north", embedding=[0.0, 1.0, 0.0, 0.0],
+            metadata=ChunkMetadata(name="north", created_at=datetime.now())
+        )) is True
+
+        results = index.query([1.0, 0.0, 0.0, 0.0], 2)
+        assert len(results) == 2
+        assert results[0].text == "east", "Nearest chunk should come first"
+        assert results[1].text == "north"
+
+    def test_linear_index_add_chunk_to_empty_index_no_normalize(self):
+        """Same empty-start flow with normalize=False (raw Euclidean mode)."""
+        index = LinearIndex([], normalize=False)
+
+        index.add_chunk(Chunk(
+            id=uuid4(), text="close", embedding=[0.1, 0.0, 0.0, 0.0],
+            metadata=ChunkMetadata(name="close", created_at=datetime.now())
+        ))
+        index.add_chunk(Chunk(
+            id=uuid4(), text="far", embedding=[10.0, 0.0, 0.0, 0.0],
+            metadata=ChunkMetadata(name="far", created_at=datetime.now())
+        ))
+
+        results = index.query([0.0, 0.0, 0.0, 0.0], 1)
+        assert len(results) == 1
+        assert results[0].text == "close"
+
 @pytest.mark.integration
 @pytest.mark.parametrize("index_class", [LinearIndex, KDTreeIndex, LSHIndex])
 def test_index_with_large_dataset(index_class):
